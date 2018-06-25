@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import butter,filtfilt
 from matplotlib import pyplot as plt
 import shutil
+import os
 
 
 def butter_lowpass(cutoff, fs, order=5):
@@ -35,6 +36,22 @@ def write_to_bagfile(filepath,topicname,msgs,headerstamps,write_permissions,crea
         else:
             for msg,stamp in zip(msgs,headerstamps):
                 bag.write(topicname, msg, rospy.Time.from_sec(stamp))
+
+def remove_topic_from_bagfile(filepath,topic_to_remove):
+    file_name = filepath.split('.bag')[0]
+    file_name = file_name.split('/')[-1]
+    temp_bag_path = "./" + file_name + "_backup.bag"
+    shutil.copy2(filepath, temp_bag_path)
+    os.remove(filepath)
+    print "Please wait... Filtering bagfile"
+    with rosbag.Bag(filepath, 'w') as outbag:
+        for topic, msg, t in rosbag.Bag(temp_bag_path).read_messages():
+            if topic == topic_to_remove:
+                pass
+            else:
+                outbag.write(topic, msg, t)
+    os.remove(temp_bag_path)
+    print "Done!"
 
 
 
@@ -89,22 +106,23 @@ class bagfile_reader():
         else:
             return []
 
-    def write_to_bagfile(self,topicname,msgs,headerstamps,createbackup = True):
-
-        if createbackup == True:
-            shutil.copy2(self.filepath,"./" + self.filepath + "_backup.bag")
-
-        elif type(createbackup) == type("string_type"):
-            shutil.copy2(self.filepath, createbackup)
-
-        with rosbag.Bag(self.filepath, 'a') as bag:
-            if type(headerstamps[0]) == type(rospy.Time.from_sec(0)):
-                for msg,stamp in zip(msgs,headerstamps):
-                    bag.write(topicname, msg, stamp)
-
-            else:
-                for msg,stamp in zip(msgs,headerstamps):
-                    bag.write(topicname, msg, rospy.Time.from_sec(stamp))
+    # Commented out because of a duplicate implementation above
+    # def write_to_bagfile(self,topicname,msgs,headerstamps,createbackup = True):
+    #
+    #     if createbackup == True:
+    #         shutil.copy2(self.filepath,"./" + self.filepath + "_backup.bag")
+    #
+    #     elif type(createbackup) == type("string_type"):
+    #         shutil.copy2(self.filepath, createbackup)
+    #
+    #     with rosbag.Bag(self.filepath, 'a') as bag:
+    #         if type(headerstamps[0]) == type(rospy.Time.from_sec(0)):
+    #             for msg,stamp in zip(msgs,headerstamps):
+    #                 bag.write(topicname, msg, stamp)
+    #
+    #         else:
+    #             for msg,stamp in zip(msgs,headerstamps):
+    #                 bag.write(topicname, msg, rospy.Time.from_sec(stamp))
 
 
 if __name__ == "__main__":
